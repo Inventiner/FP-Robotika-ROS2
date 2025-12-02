@@ -1,0 +1,180 @@
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                         SLAM TF TREE FIX - ARCHITECTURE                         │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                            BEFORE (BROKEN)                                   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Gazebo DiffDrive Plugin                                                    │
+│  ├── Publishes: /odom (nav_msgs/Odometry)                                  │
+│  └── TF: NONE (publish_odom_tf: false)                                     │
+│                                                                              │
+│  SLAM Toolbox                                                               │
+│  ├── Subscribes: /scan                                                      │
+│  ├── Needs: odom->base_link transform ❌ NOT FOUND                         │
+│  └── Error: "queue is full" (can't correlate scans)                        │
+│                                                                              │
+│  TF Tree:                                                                    │
+│      map (SLAM)    base_link -> lidar_link (robot_state_publisher)         │
+│         |                |                                                   │
+│         |                |                                                   │
+│         ❌ DISCONNECTED ❌                                                   │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                            AFTER (FIXED)                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌──────────────────┐                                                       │
+│  │  Gazebo Fortress │                                                       │
+│  │  DiffDrive Plugin│                                                       │
+│  └────────┬─────────┘                                                       │
+│           │ Publishes /odom messages                                        │
+│           │ (position, velocity, covariance)                                │
+│           ▼                                                                  │
+│  ┌──────────────────────┐                                                   │
+│  │  robot_localization  │                                                   │
+│  │  (EKF Filter Node)   │                                                   │
+│  ├──────────────────────┤                                                   │
+│  │ • Fuses /odom data   │                                                   │
+│  │ • Applies EKF filter │                                                   │
+│  │ • Publishes TF       │                                                   │
+│  └────────┬─────────────┘                                                   │
+│           │                                                                  │
+│           │ TF: odom -> base_link ✅                                        │
+│           │                                                                  │
+│  ┌────────┴─────────────────────────────────────────┐                      │
+│  │                                                   │                      │
+│  │  ┌──────────────────┐        ┌─────────────────┐ │                      │
+│  │  │  SLAM Toolbox    │        │ robot_state_pub │ │                      │
+│  │  ├──────────────────┤        ├─────────────────┤ │                      │
+│  │  │ • Reads /scan    │        │ • Publishes     │ │                      │
+│  │  │ • Reads TF tree  │        │   robot joints  │ │                      │
+│  │  │ • Builds map     │        │   and links     │ │                      │
+│  │  └────────┬─────────┘        └────────┬────────┘ │                      │
+│  │           │                           │           │                      │
+│  │           │                           │           │                      │
+│  └───────────┼───────────────────────────┼───────────┘                      │
+│              │                           │                                  │
+│              │ TF: map -> odom ✅        │ TF: base_link -> lidar_link ✅  │
+│              │                           │                                  │
+│              ▼                           ▼                                  │
+│  ┌──────────────────────────────────────────────────────┐                  │
+│  │              COMPLETE TF TREE ✅                      │                  │
+│  │                                                        │                  │
+│  │   map ──────> odom ──────> base_link ──────> lidar_link               │
+│  │      (SLAM)     (robot_loc)    (robot_state_pub)      │                  │
+│  │                                                        │                  │
+│  │   Result: SLAM toolbox can correlate scans!           │                  │
+│  └──────────────────────────────────────────────────────┘                  │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                         DATA FLOW DIAGRAM                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Gazebo Simulation                                                          │
+│  ╔════════════════╗                                                         │
+│  ║  Physics Engine ║                                                         │
+│  ╚═══╤════════╤═══╝                                                         │
+│      │        │                                                              │
+│      │        └─────────────┐                                               │
+│      │                      │                                               │
+│      ▼                      ▼                                               │
+│  /odom topic           /scan topic                                          │
+│  (Odometry)            (LaserScan)                                          │
+│      │                      │                                               │
+│      │                      │                                               │
+│      ▼                      │                                               │
+│  ┌─────────────────┐        │                                               │
+│  │ EKF Node        │        │                                               │
+│  │ (robot_loc)     │        │                                               │
+│  └────┬────────────┘        │                                               │
+│       │                      │                                               │
+│       ▼                      │                                               │
+│  /tf (odom->base_link)       │                                               │
+│       │                      │                                               │
+│       │    ┌─────────────────┘                                               │
+│       │    │                                                                 │
+│       ▼    ▼                                                                 │
+│  ┌──────────────────┐                                                       │
+│  │  SLAM Toolbox    │                                                       │
+│  │  (async_mapping) │                                                       │
+│  └────┬─────────────┘                                                       │
+│       │                                                                      │
+│       ▼                                                                      │
+│  /map topic + /tf (map->odom)                                               │
+│       │                                                                      │
+│       ▼                                                                      │
+│  ┌─────────────┐                                                            │
+│  │   RViz2     │  ← Visualizes everything!                                 │
+│  └─────────────┘                                                            │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                         KEY CONFIGURATION                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  URDF (roomba.urdf.xacro):                                                  │
+│  ┌────────────────────────────────────────────┐                            │
+│  │ <plugin name="DiffDrive">                  │                            │
+│  │   <odom_topic>/odom</odom_topic>           │                            │
+│  │   <publish_odom_tf>false</publish_odom_tf> │ ← CRITICAL!               │
+│  │   <frame_id>odom</frame_id>                │                            │
+│  │   <child_frame_id>base_link</child_frame_id>                            │
+│  │ </plugin>                                  │                            │
+│  └────────────────────────────────────────────┘                            │
+│                                                                              │
+│  EKF Config (ekf.yaml):                                                     │
+│  ┌────────────────────────────────────────────┐                            │
+│  │ odom_frame: odom                           │                            │
+│  │ base_link_frame: base_link                 │                            │
+│  │ world_frame: odom                          │ ← Works in odom frame     │
+│  │ odom0: /odom                               │                            │
+│  │ odom0_config: [...]                        │ ← Fuses velocities        │
+│  └────────────────────────────────────────────┘                            │
+│                                                                              │
+│  Launch Order (mapping_launch.py):                                          │
+│  ┌────────────────────────────────────────────┐                            │
+│  │ 1. sim_launch (Gazebo + robot_state_pub)   │                            │
+│  │ 2. robot_localization_node (EKF)           │ ← First: odom->base_link  │
+│  │ 3. slam_toolbox_node                       │ ← Second: map->odom       │
+│  │ 4. rviz2                                   │                            │
+│  └────────────────────────────────────────────┘                            │
+│                                                                              │
+│  All Nodes MUST Have:                                                       │
+│  ┌────────────────────────────────────────────┐                            │
+│  │ parameters=[{'use_sim_time': True}]        │ ← Time sync critical!     │
+│  └────────────────────────────────────────────┘                            │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                            BUILD & TEST                                      │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Terminal 1: Build & Launch                                                 │
+│  ────────────────────────────────────────────────────────                   │
+│  $ cd ~/ros2_ws                                                             │
+│  $ colcon build --packages-select robo_roomba_sim                           │
+│  $ source install/setup.bash                                                │
+│  $ ros2 launch robo_roomba_sim mapping_launch.py                            │
+│                                                                              │
+│  Terminal 2: Verify TF Tree                                                 │
+│  ────────────────────────────────────────────────────────                   │
+│  $ source ~/ros2_ws/install/setup.bash                                      │
+│  $ ros2 run tf2_ros tf2_echo odom base_link                                │
+│  >>> Should show continuous transforms ✅                                   │
+│                                                                              │
+│  Terminal 3: Check Frames                                                   │
+│  ────────────────────────────────────────────────────────                   │
+│  $ source ~/ros2_ws/install/setup.bash                                      │
+│  $ ros2 run tf2_tools view_frames                                           │
+│  $ xdg-open frames.pdf                                                      │
+│  >>> Should show connected tree ✅                                          │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘

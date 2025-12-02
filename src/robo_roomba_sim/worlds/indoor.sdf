@@ -1,0 +1,120 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <world name="cafe_on_null_island">
+    
+    <!-- 1. PLUGINS -->
+    <plugin filename="libignition-gazebo-physics-system.so" name="ignition::gazebo::systems::Physics">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </plugin>
+    <plugin filename="libignition-gazebo-sensors-system.so" name="ignition::gazebo::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="libignition-gazebo-scene-broadcaster-system.so" name="ignition::gazebo::systems::SceneBroadcaster"></plugin>
+    <plugin filename="libignition-gazebo-user-commands-system.so" name="ignition::gazebo::systems::UserCommands"></plugin>
+
+    <!-- 2. SCENE (Manual Sky Blue - No Tearing) -->
+    <scene>
+      <grid>false</grid>
+      <ambient>0.8 0.8 0.8 1.0</ambient>
+      <background>0.53 0.80 0.92 1.0</background>
+      <shadows>true</shadows>
+    </scene>
+
+    <!-- 3. LIGHTING (Sunset Orange) -->
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0.75 0</pose>
+      
+      <!-- Warm Orange Diffuse Light -->
+      <diffuse>1.0 0.65 0.2 1</diffuse> 
+      <specular>0.1 0.1 0.1 1</specular>
+      
+      <intensity>4</intensity>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <!-- 4. ENVIRONMENT -->
+    <include>
+      <uri>https://fuel.gazebosim.org/1.0/OpenRobotics/models/Null Island</uri>
+    </include>
+      
+    <!-- Safe Ocean (Blue Plane) -->
+    <model name="ocean">
+      <static>true</static>
+      <pose>0 0 -0.1 0 0 0</pose>
+      <link name="link">
+        <visual name="visual">
+          <geometry><box><size>200 200 0.1</size></box></geometry>
+          <material>
+            <ambient>0.0 0.1 0.6 1</ambient>
+            <diffuse>0.0 0.1 0.6 1</diffuse>
+            <specular>0.8 0.8 0.8 1</specular>
+          </material>
+        </visual>
+        <collision name="collision">
+          <geometry><box><size>200 200 0.1</size></box></geometry>
+        </collision>
+      </link>
+    </model>
+
+    <!-- 5. CAFE (Lifted to Z=0.5) -->
+    <model name="cafe">
+      <static>true</static>
+      <pose>0 0 0.5 0 0 0</pose> 
+      <link name="link">
+        
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://cafe/meshes/cafe.dae</uri>
+            </mesh>
+          </geometry>
+        </visual>
+
+        <!-- COLLISIONS -->
+        <collision name="main_floor">
+          <pose>-0.4 -0.75 0.0948 0 0 0</pose>
+          <geometry><box><size>9.38 22.63 0.19</size></box></geometry>
+        </collision>
+        <collision name="wall_1">
+          <pose>-5.03 0.53 1.415 0 0 0</pose>
+          <geometry><box><size>.12 23.16 2.83</size></box></geometry>
+        </collision>
+        <collision name="wall_2">
+          <pose>4.24 -.31 1.415 0 0 0</pose>
+          <geometry><box><size>.12 21.48 2.83</size></box></geometry>
+        </collision>
+        <collision name="wall_3">
+          <pose>-1.48 7.43 1.415 0 0 0</pose>
+          <geometry><box><size>7.2 0.12 2.83</size></box></geometry>
+        </collision>
+        <collision name="wall_4">
+          <pose>2.09 8.9 1.435 0 0 0</pose>
+          <geometry><box><size>0.12 3.05 2.87</size></box></geometry>
+        </collision>
+        <collision name="wall_5">
+          <pose>3.155 10.4 1.435 0 0 0</pose>
+          <geometry><box><size>2.13 0.12 2.87</size></box></geometry>
+        </collision>
+        <collision name="wall_6">
+          <pose>0.615 -10.98 1.415 0 0 0</pose>
+          <geometry><box><size>7.36 0.15 2.83</size></box></geometry>
+        </collision>
+        <collision name="wall_7">
+          <pose>-4.62 -10.98 1.415 0 0 0</pose>
+          <geometry><box><size>0.93 0.15 2.83</size></box></geometry>
+        </collision>
+        <collision name="wall_8">
+          <pose>-3.61 -10.98 2.69 0 0 0</pose>
+          <geometry><box><size>1.09 0.15 0.28</size></box></geometry>
+        </collision>
+        <collision name="coke">
+          <pose>-4.385 0.26 .95 0 0 0</pose>
+          <geometry><box><size>1.03 1.03 1.52</size></box></geometry>
+        </collision>
+      </link>
+    </model>
+
+  </world>
+</sdf>

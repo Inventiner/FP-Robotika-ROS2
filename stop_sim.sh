@@ -1,17 +1,21 @@
 #!/bin/bash
 
-echo "Stopping simulation and ROS 2 nodes..."
+echo "============================================"
+echo "Stopping all ROS 2 and Gazebo processes..."
+echo "============================================"
 
-# Stop Ignition Gazebo
-echo "Stopping Ignition Gazebo..."
-pkill -f 'ign gazebo*'
-pkill -f gzserver     # Older versions of Ignition/Gazebo Classic
-pkill -f gzclient     # If the GUI was launched
+# Kill all processes related to the launch file
+pkill -f "ros2 launch robo_roomba_sim"
 
-# Stop ROS 2 custom nodes
-echo "Stopping custom ROS 2 nodes..."
-pkill -f lidar_processor
-pkill -f robot_driver
-pkill -f tugbot_depot.launch.py
+# Kill specific nodes and processes just in case
+pkill -f gzserver
+pkill -f gzclient
+pkill -f rviz2
+pkill -f cleaning_node
+pkill -f slam_toolbox
+pkill -f robot_state_publisher
+pkill -f parameter_bridge
 
-echo "✅ All simulation processes stopped."
+echo "============================================"
+echo "All processes stopped."
+echo "============================================"

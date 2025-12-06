@@ -13,7 +13,7 @@
     <plugin filename="libignition-gazebo-scene-broadcaster-system.so" name="ignition::gazebo::systems::SceneBroadcaster"></plugin>
     <plugin filename="libignition-gazebo-user-commands-system.so" name="ignition::gazebo::systems::UserCommands"></plugin>
 
-    <!-- 2. SCENE (Manual Sky Blue - No Tearing) -->
+    <!-- 2. SCENE -->
     <scene>
       <grid>false</grid>
       <ambient>0.8 0.8 0.8 1.0</ambient>
@@ -21,25 +21,26 @@
       <shadows>true</shadows>
     </scene>
 
-    <!-- 3. LIGHTING (Sunset Orange) -->
+    <!-- 3. LIGHTING -->
     <light type="directional" name="sun">
       <cast_shadows>true</cast_shadows>
       <pose>0 0 10 0 0.75 0</pose>
-      
-      <!-- Warm Orange Diffuse Light -->
       <diffuse>1.0 0.65 0.2 1</diffuse> 
       <specular>0.1 0.1 0.1 1</specular>
-      
       <intensity>4</intensity>
       <direction>-0.5 0.1 -0.9</direction>
     </light>
 
     <!-- 4. ENVIRONMENT -->
     <include>
+      <uri>https://fuel.gazebosim.org/1.0/OpenRobotics/models/Ground%20Plane</uri>
+      <pose>0 0 -0.2 0 0 0</pose>
+    </include>
+    <include>
       <uri>https://fuel.gazebosim.org/1.0/OpenRobotics/models/Null Island</uri>
     </include>
       
-    <!-- Safe Ocean (Blue Plane) -->
+    <!-- Ocean -->
     <model name="ocean">
       <static>true</static>
       <pose>0 0 -0.1 0 0 0</pose>
@@ -58,7 +59,7 @@
       </link>
     </model>
 
-    <!-- 5. CAFE (Lifted to Z=0.5) -->
+    <!-- 5. CAFE -->
     <model name="cafe">
       <static>true</static>
       <pose>0 0 0.5 0 0 0</pose> 
@@ -74,8 +75,8 @@
 
         <!-- COLLISIONS -->
         <collision name="main_floor">
-          <pose>-0.4 -0.75 0.0948 0 0 0</pose>
-          <geometry><box><size>9.38 22.63 0.19</size></box></geometry>
+          <pose>-0.4 -0.25 0.0948 0 0 0</pose>
+          <geometry><box><size>9.38 25.0 0.19</size></box></geometry>
         </collision>
         <collision name="wall_1">
           <pose>-5.03 0.53 1.415 0 0 0</pose>
@@ -85,9 +86,13 @@
           <pose>4.24 -.31 1.415 0 0 0</pose>
           <geometry><box><size>.12 21.48 2.83</size></box></geometry>
         </collision>
-        <collision name="wall_3">
-          <pose>-1.48 7.43 1.415 0 0 0</pose>
-          <geometry><box><size>7.2 0.12 2.83</size></box></geometry>
+        <collision name="wall_3_part_a"> <!-- Left side of the kitchen door -->
+          <pose>-2.05 7.43 1.415 0 0 0</pose>
+          <geometry><box><size>5.9 0.12 2.83</size></box></geometry>
+        </collision>
+        <collision name="wall_3_part_b"> <!-- Right side of the kitchen door -->
+          <pose>2.09 7.43 1.415 0 0 0</pose>
+          <geometry><box><size>0.1 0.12 2.83</size></box></geometry>
         </collision>
         <collision name="wall_4">
           <pose>2.09 8.9 1.435 0 0 0</pose>
@@ -112,6 +117,65 @@
         <collision name="coke">
           <pose>-4.385 0.26 .95 0 0 0</pose>
           <geometry><box><size>1.03 1.03 1.52</size></box></geometry>
+        </collision>
+      </link>
+    </model>
+
+    <model name='virtual_wall'>
+      <static>true</static>
+      <pose> -3.3 -10.95 1.69 0 0 0</pose>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry>
+            <box><size>2.0 0.1 2.0</size></box>
+          </geometry>
+        </collision>
+        <visual name='visual'>
+           <transparency>0.8</transparency>
+           <geometry>
+             <box><size>2.0 0.1 2.0</size></box>
+           </geometry>
+           <material>
+             <ambient>0 0 1 0.2</ambient>
+             <diffuse>0 0 1 0.2</diffuse>
+           </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ========================================================== -->
+    <!-- 6. DEBUGGING TOOLS -->
+    <!-- ========================================================== -->
+    <!-- 1. The "Tape Measure" Cube -->
+    <model name='tape_measure_cube'>
+      <static>true</static>
+      <pose>0 -7 2 0 0 0</pose>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry><box><size>0.1 0.1 0.1</size></box></geometry>
+          <material>
+            <ambient>1 0 0 1</ambient><diffuse>1 0 0 1</diffuse>
+          </material>
+        </visual>
+        <collision name='collision'>
+          <geometry><box><size>0.1 0.1 0.1</size></box></geometry>
+        </collision>
+      </link>
+    </model>
+
+    <!-- 2. The "Rotation Guide" Wall -->
+    <model name='rotation_guide'>
+      <static>true</static>
+      <pose>2 -7 2 0 0 0</pose>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry><box><size>2.0 0.1 0.5</size></box></geometry>
+          <material>
+            <ambient>1 0 0 1</ambient><diffuse>1 0 0 1</diffuse>
+          </material>
+        </visual>
+        <collision name='collision'>
+          <geometry><box><size>2.0 0.1 0.5</size></box></geometry>
         </collision>
       </link>
     </model>

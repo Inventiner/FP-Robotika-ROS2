@@ -10,92 +10,89 @@ class SmartVacuum(Node):
         
         self.publisher_ = self.create_publisher(Twist, '/cmd_vel', 10)
         self.subscriber = self.create_subscription(
-            LaserScan, 
-            '/scan', 
-            self.lidar_callback, 
+            LaserScan, '/scan', self.lidar_callback, 
             QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT))
 
-        self.regions = {'front': float('inf'), 'left': float('inf')}
-        self.state_description = ''
+        self.regions = {'front': 99.0, 'left': 99.0}
+        self.lidar_received = False
+        self.current_state = "SEEKING"
         
-        # Timer: Run the logic 10 times a second
+        # --- PID CONTROLLER VARIABLES ---
+        self.last_error = 0.0
+        self.integral = 0.0
+        # More "punitive" gains
+        self.kp = 4.0  # Stronger reaction to current error
+        self.kd = 8.0  # Stronger damping to prevent overshoot
+        self.ki = 0.05 # Small integral term to correct persistent drift
+
+        self.get_logger().info("SMART VACUUM INITIALIZED | PID Controller")
         self.timer = self.create_timer(0.1, self.control_loop)
-        self.get_logger().info("Mode: SEEK & WALL FOLLOW (Left Hug)")
 
     def lidar_callback(self, msg):
-        ranges = msg.ranges
-        size = len(ranges)
-        
-        # Helper to clean data
-        def get_min(start, end):
-            # Scan slice
-            data = ranges[start:end]
-            # Filter valid ranges (0.0 to 10.0m)
-            valid = [x for x in data if 0.0 < x < 10.0]
-            return min(valid) if valid else 10.0
-
-        # Front: Narrow slice (-15 to +15 degrees)
-        # Gazebo 360 array: 0 is front. 
-        self.regions['front'] = min(get_min(0, 15), get_min(size-15, size))
-        
-        # Left: Slice from 45 to 100 degrees (The side we hug)
-        left_start = int(size * (45/360))
-        left_end = int(size * (100/360))
-        self.regions['left'] = get_min(left_start, left_end)
+        # ... (this is the same) ...
+        self.lidar_received = True; ranges = msg.ranges; size = len(ranges)
+        def get_min_in_slice(start, end):
+            valid = [r for r in ranges[start:end] if 0.1 < r < 10.0]
+            return min(valid) if valid else 99.0
+        front_index = size // 2
+        self.regions['front'] = get_min_in_slice(front_index - 15, front_index + 15)
+        left_index = (size * 3) // 4
+        self.regions['left'] = get_min_in_slice(left_index - 20, left_index + 20)
 
     def control_loop(self):
-        msg = Twist()
-        
-        # --- SENSOR DATA ---
-        front_dist = self.regions['front']
-        left_dist = self.regions['left']
-        
-        # --- CONSTANTS ---
-        STOP_DIST = 0.8     # When to stop before hitting wall
-        WALL_DIST = 0.6     # Ideal distance from wall
-        SPEED = 0.4         # Forward speed
-        TURN_SPEED = 0.6    # Rotation speed
-        
-        # --- LOGIC ---
-        
-        # 1. OBSTACLE AHEAD (Collision Avoidance)
-        if front_dist < STOP_DIST:
-            self.state_description = "HIT WALL -> Turning Right"
-            msg.linear.x = 0.0
-            msg.angular.z = -TURN_SPEED # Turn Right to align wall to our Left
-            
-        # 2. FOUND WALL ON LEFT (Wall Following Logic)
-        elif left_dist < 1.2:
-            self.state_description = "FOLLOWING WALL (Left)"
-            msg.linear.x = SPEED
-            
-            # Simple P-Controller for steering
-            # If left_dist is LARGE (too far) -> error is positive -> Turn Left (+)
-            # If left_dist is SMALL (too close) -> error is negative -> Turn Right (-)
-            error = left_dist - WALL_DIST
-            
-            # Clamp the turning so it doesn't wobble crazily
-            rotation = error * 1.5 
-            msg.angular.z = max(min(rotation, 0.6), -0.6)
-            
-            self.state_description += f" [Dist: {left_dist:.2f}m]"
+        cmd_msg = Twist()
+        if not self.lidar_received: return
 
-        # 3. NO WALLS (Seek Mode)
+        front_dist = self.regions['front']; left_dist = self.regions['left']
+        
+        STOP_DIST = 0.4
+        WALL_DIST = 0.35 # Tighter 35cm target distance
+        SPEED = 0.3
+        TURN_SPEED = 0.6
+        WALL_FOLLOW_THRESHOLD = 0.8 # Use your tighter threshold
+
+        # --- State Logic ---
+        if front_dist < STOP_DIST: self.current_state = "TURNING"
+        elif left_dist < WALL_FOLLOW_THRESHOLD: self.current_state = "FOLLOWING"
+        elif self.current_state == "FOLLOWING" and left_dist >= WALL_FOLLOW_THRESHOLD: self.current_state = "CORNERING"
         else:
-            self.state_description = "SEEKING (Driving Straight)"
-            msg.linear.x = SPEED
-            msg.angular.z = 0.0 # Just go straight
+            if self.current_state != "CORNERING": self.current_state = "SEEKING"
+
+        # --- Action based on State ---
+        if self.current_state == "TURNING":
+            cmd_msg.linear.x = 0.0; cmd_msg.angular.z = -TURN_SPEED
+            self.last_error = 0; self.integral = 0 # Reset PID
+        
+        elif self.current_state == "FOLLOWING":
+            cmd_msg.linear.x = SPEED
+            
+            # --- FULL PID CONTROLLER ---
+            error = left_dist - WALL_DIST
+            self.integral += error
+            derivative = error - self.last_error
+            
+            turn_adjustment = (self.kp * error) + (self.ki * self.integral) + (self.kd * derivative)
+            self.last_error = error
+            
+            cmd_msg.angular.z = max(min(turn_adjustment, 0.8), -0.8)
+            
+        elif self.current_state == "CORNERING":
+            cmd_msg.linear.x = 0.0; cmd_msg.angular.z = 0.7
+            self.last_error = 0; self.integral = 0
+            
+        elif self.current_state == "SEEKING":
+            cmd_msg.linear.x = SPEED; cmd_msg.angular.z = 0.0
+            self.last_error = 0; self.integral = 0
 
         # --- DEBUG ---
-        print(f"Front: {front_dist:.2f}m | Left: {left_dist:.2f}m | Action: {self.state_description}")
-        self.publisher_.publish(msg)
+        log_msg = (f"State: {self.current_state} | Sensors: [F:{front_dist:.2f}, L:{left_dist:.2f}] | CMD: [L:{cmd_msg.linear.x:.2f}, A:{cmd_msg.angular.z:.2f}]")
+        self.get_logger().info(log_msg, throttle_duration_sec=0.5)
+        
+        self.publisher_.publish(cmd_msg)
 
 def main(args=None):
-    rclpy.init(args=args)
-    node = SmartVacuum()
-    rclpy.spin(node)
-    node.destroy_node()
-    rclpy.shutdown()
+    rclpy.init(args=args); node = SmartVacuum(); rclpy.spin(node)
+    node.destroy_node(); rclpy.shutdown()
 
 if __name__ == '__main__':
     main()

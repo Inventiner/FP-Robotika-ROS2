@@ -1,40 +1,21 @@
 #!/bin/bash
 
-# -------------------------------
-# Tugbot ROS2 Setup Script
-# -------------------------------
+echo "==================================================="
+echo " Installing ROS 2 Dependencies for Humble... "
+echo "==================================================="
 
-set -e
-
-echo "Setting up Tugbot ROS2 workspace..."
-
-# Install dependencies
-echo "Installing ROS 2 and build tool dependencies..."
+# Update package lists
 sudo apt update
+
+# Install core robotics packages needed for this project
 sudo apt install -y \
-    ros-humble-desktop \
-    ros-humble-ros-gz \
-    python3-colcon-common-extensions
+  ros-humble-ros-gz \
+  ros-humble-slam-toolbox \
+  ros-humble-navigation2 \
+  ros-humble-nav2-bringup \
+  ros-humble-robot-localization \
+  ros-humble-teleop-twist-keyboard
 
-# Source ROS 2 setup
-source /opt/ros/humble/setup.bash
-
-# Build the workspace
-echo "Building the workspace..."
-
-# Create missing directory
-MAP_DIR="src/tugbot_ros2_pkgs/tugbot_navigation2/map"
-
-if [ ! -d "$MAP_DIR" ]; then
-    echo "Creating missing directory: $MAP_DIR"
-    mkdir -p "$MAP_DIR"
-else
-    echo "Directory exists: $MAP_DIR"
-fi
-
-colcon build --symlink-install
-
-source install/setup.bash
-
-echo "Tugbot workspace setup complete!"
-echo "To run the simulation, simply run \"run_sim.sh\" script "
+echo "==================================================="
+echo " Installation complete! Ready to build. "
+echo "==================================================="

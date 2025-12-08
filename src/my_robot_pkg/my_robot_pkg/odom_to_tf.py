@@ -21,14 +21,14 @@ class OdomToTfNode(Node):
     def odom_callback(self, msg):
         t = TransformStamped()
 
-        # Read message content and assign it to corresponding tf variables
+        # Baca isi pesan dan tetapkan ke variabel tf yang sesuai
         
-        # --- THE FIX ---
-        # Use the timestamp from the incoming message itself
+        # --- PERBAIKAN ---
+        # Gunakan timestamp dari pesan yang masuk itu sendiri
         t.header.stamp = msg.header.stamp
-        # --- END FIX ---
+        # --- AKHIR PERBAIKAN ---
         
-        # Use base frame names without prefix
+        # Gunakan nama frame dasar tanpa prefix
         t.header.frame_id = 'odom'
         t.child_frame_id = 'base_link'
 

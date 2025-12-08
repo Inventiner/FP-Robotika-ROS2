@@ -12,15 +12,20 @@ class AutonomousMapper(Node):
         super().__init__('autonomous_mapper')
         
         self.publisher_ = self.create_publisher(Twist, '/cmd_vel', 10)
+        # Subscribe ke topic LaserScan dan bumper
+        # (Berlangganan ke topik LaserScan dan bumper)
         self.create_subscription(LaserScan, '/scan', self.lidar_callback, QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT))
         self.create_subscription(Contacts, '/bumper', self.bumper_callback, 10)
 
         self.lidar_received = False
+        # Data sensor untuk menyimpan jarak yang terukur
         self.sensor_data = {'front': 99.0, 'right_90': 99.0, 'right_45': 99.0}
         
+        # State untuk bumper dan pemulihan (recovery)
         self.bumper_hit = False; self.recovery_timer = 0; self.is_recovering = False
 
         # --- PERSISTENT STATE ---
+        # State awal robot
         self.current_state = "SEEKING"
         
         self.kp_dist = 2.0; self.kp_theta = 4.0
@@ -29,13 +34,16 @@ class AutonomousMapper(Node):
         self.timer = self.create_timer(0.05, self.control_loop) # 20Hz
 
     def bumper_callback(self, msg):
+        # Callback jika bumper menabrak sesuatu
         if len(msg.contacts) > 0 and not self.is_recovering:
             self.bumper_hit = True; self.is_recovering = True
             self.get_logger().warn(">>> BUMPER HIT! <<<")
 
     def lidar_callback(self, msg):
+        # Callback untuk memproses data LIDAR
         self.lidar_received = True; ranges = msg.ranges; size = len(ranges); mid_idx = size // 2
         def get_avg(start, end):
+            # Menghitung rata-rata jarak pada range tertentu
             s = ranges[start:end]; v = [r for r in s if 0.1 < r < 10.0]; return sum(v)/len(v) if v else 99.0
         self.sensor_data['front'] = get_avg(mid_idx-15, mid_idx+15)
         r90_idx = int(size * 0.25); self.sensor_data['right_90'] = get_avg(r90_idx-10, r90_idx+10)
@@ -46,12 +54,13 @@ class AutonomousMapper(Node):
         if not self.lidar_received: return
 
         if self.bumper_hit: self.recovery_timer = 30; self.bumper_hit = False
+        # Logika pemulihan jika menabrak
         if self.recovery_timer > 0:
             self.current_state = "RECOVERING"
-            if self.recovery_timer > 15: cmd_msg.linear.x = -0.15
-            else: cmd_msg.angular.z = 0.7
+            if self.recovery_timer > 15: cmd_msg.linear.x = -0.15 # Mundur
+            else: cmd_msg.angular.z = 0.7 # Putar
             self.recovery_timer -= 1
-            if self.recovery_timer == 0: self.is_recovering = False; self.current_state="SEEKING" # After recovery, force re-seek
+            if self.recovery_timer == 0: self.is_recovering = False; self.current_state="SEEKING" # Setelah pulih, cari tembok lagi
             self.publisher_.publish(cmd_msg); return
 
         front = self.sensor_data['front']; right_90 = self.sensor_data['right_90']
@@ -68,29 +77,33 @@ class AutonomousMapper(Node):
         # --- State Actions & Transitions ---
         
         if self.current_state == "SEEKING":
+            # Mencari tembok
             cmd_msg.linear.x = LINEAR_SPEED
-            # Transition: Found a wall, start turning
+            # Transisi: Menemukan tembok, mulai berputar
             if front < INNER_CORNER_STOP_DIST or right_90 < WALL_ACQUIRE_DIST:
                 self.current_state = "TURNING_INNER"
         
         elif self.current_state == "TURNING_INNER":
+            # Berputar di pojok dalam
             cmd_msg.linear.x = 0.0; cmd_msg.angular.z = TURN_SPEED
-            # Transition: Once front is clear, we must be following
+            # Transisi: Jika depan sudah kosong, mulai ikuti tembok
             if front > INNER_CORNER_STOP_DIST + 0.1:
                 self.current_state = "FOLLOW_WALL"
         
         elif self.current_state == "TURNING_OUTER":
+            # Berputar di pojok luar
             cmd_msg.linear.x = 0.1; cmd_msg.angular.z = -0.7
-            # Transition: Once we see the wall on our right again, start following
+            # Transisi: Jika melihat tembok di kanan lagi, mulai ikuti tembok
             if right_90 < WALL_ACQUIRE_DIST:
                 self.current_state = "FOLLOW_WALL"
 
         elif self.current_state == "SIMPLE_FOLLOW":
+            # Mode mengikuti tembok sederhana (Proportional Control)
             error = TARGET_WALL_DIST - right_90
             turn = self.kp_dist * error
             cmd_msg.angular.z = max(min(turn, 0.4), -0.4)
             cmd_msg.linear.x = LINEAR_SPEED * 0.7
-            # Transition: We stay in this "dumb" mode until a major event forces us out
+            # Transisi: Kembali ke mode pintar jika ada kejadian besar
             if front < INNER_CORNER_STOP_DIST: self.current_state = "TURNING_INNER"
             elif right_90 > WALL_ACQUIRE_DIST: self.current_state = "TURNING_OUTER"
 
@@ -99,16 +112,16 @@ class AutonomousMapper(Node):
             if front < INNER_CORNER_STOP_DIST: self.current_state = "TURNING_INNER"; return
             if right_90 > WALL_ACQUIRE_DIST: self.current_state = "TURNING_OUTER"; return
 
-            # Action: Proportional-Heading Control
+            # Aksi: Kontrol Proportional-Heading
             ideal_45 = right_90 / 0.707
             heading_error = ideal_45 - right_45
             
-            # THE LOCK: If heading error is huge, switch to dumb mode and STAY THERE
+            # KUNCI: Jika error heading besar, pindah ke mode sederhana (DUMB)
             if abs(heading_error) > 0.8:
                 self.current_state = "SIMPLE_FOLLOW"
-                return # Act on the new state in the next cycle
-
-            # If sensors are trusted, do Pro control
+                return # Bertindak pada siklus berikutnya
+            
+            # Jika sensor dapat dipercaya, lakukan kontrol Proportional
             distance_error = TARGET_WALL_DIST - right_90
             turn = (self.kp_dist * distance_error) + (self.kp_theta * heading_error)
             turn = max(min(turn, 1.0), -1.0)

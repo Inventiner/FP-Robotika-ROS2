@@ -5,9 +5,11 @@ echo "Stopping all ROS 2 and Gazebo processes..."
 echo "============================================"
 
 # Kill all processes related to the launch file
+# (Menghentikan semua proses yang terkait dengan file launch)
 pkill -f "ros2 launch robo_roomba_sim"
 
 # Kill specific nodes and processes just in case
+# (Menghentikan node dan proses spesifik untuk memastikan semuanya berhenti)
 pkill -f gzserver
 pkill -f gzclient
 pkill -f rviz2

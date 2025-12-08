@@ -8,6 +8,7 @@ from launch_ros.actions import Node
 def generate_launch_description():
 
     # 1. Launch our Simulation (Gazebo + Robot)
+    # (1. Jalankan Simulasi kita (Gazebo + Robot))
     sim_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(get_package_share_directory('robo_roomba_sim'), 
@@ -16,6 +17,7 @@ def generate_launch_description():
     )
 
     # 2. SLAM Toolbox with Custom Configuration
+    # (2. SLAM Toolbox dengan Konfigurasi Kustom)
     # Using our custom config with Gazebo's natural frame names
     slam_params_file = os.path.join(get_package_share_directory("robo_roomba_sim"),
                                     "config", "mapper_params_online_async.yaml")
@@ -31,6 +33,7 @@ def generate_launch_description():
         output='screen')
 
     # 3. Rviz2
+    # (3. Jalankan Rviz2)
     rviz = Node(
         package='rviz2',
         executable='rviz2',

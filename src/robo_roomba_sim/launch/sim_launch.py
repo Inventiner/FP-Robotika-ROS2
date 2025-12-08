@@ -7,24 +7,34 @@ from launch.actions import SetEnvironmentVariable
 import xacro
 
 def generate_launch_description():
+    # Get package directories
+    # (Dapatkan direktori paket)
     pkg_name = 'robo_roomba_sim'
     pkg_share = get_package_share_directory(pkg_name)
 
+    # Process URDF/Xacro file
+    # (Proses file URDF/Xacro)
     xacro_file = os.path.join(pkg_share, 'urdf', 'roomba.urdf.xacro')
     robot_desc = xacro.process_file(xacro_file).toxml()
 
+    # Setup Gazebo resources path
+    # (Setup path resource Gazebo)
     worlds_path = os.path.join(pkg_share, 'worlds')
     set_res_path = SetEnvironmentVariable(
         name='IGN_GAZEBO_RESOURCE_PATH', 
         value=worlds_path
     )
 
+    # Launch Gazebo
+    # (Jalankan Gazebo)
     world_file = os.path.join(pkg_share, 'worlds', 'indoor.sdf')
     gazebo = ExecuteProcess(
         cmd=['ign', 'gazebo', '-r', world_file],
         output='screen'
     )
 
+    # Spawn Entity (Robot)
+    # (Munculkan Entitas Robot)
     spawn_entity = Node(
         package='ros_gz_sim',
         executable='create',
@@ -32,6 +42,8 @@ def generate_launch_description():
         output='screen'
     )
 
+    # Robot State Publisher
+    # (Publisher Status Robot)
     node_robot_state_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
@@ -42,6 +54,8 @@ def generate_launch_description():
         ]
     )
 
+    # ROS GZ Bridge
+    # (Jembatan ROS GZ)
     bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',

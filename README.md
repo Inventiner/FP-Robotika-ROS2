@@ -11,27 +11,30 @@ This project is a ROS 2 Humble and Gazebo Fortress simulation of a vacuum-cleani
 -   **Autonomous Exploration:** The robot uses a 4-state PID wall-following algorithm to intelligently trace the perimeter of the environment without human intervention.
 -   **SLAM Integration:** Uses the standard `slam_toolbox` to generate a 2D occupancy grid map from Lidar data and odometry.
 -   **Visualization:** Comes with a pre-configured RViz setup to visualize the map-building process in real-time.
+-   **Indonesian Comments:** All helper scripts and source codes are commented in Bahasa Indonesia for educational purposes.
 
 ## Assets Used
 
-This simulation would not be possible without the excellent free models provided by the community on the Gazebo Fuel platform.
+This simulation relies on models provided by the community on the Gazebo Fuel platform:
 
--   **[Cafe Model](https://app.gazebosim.org/OpenRobotics/fuel/models/Cafe):** The primary environment for the robot, used as a local asset. Created by Open Robotics.
+-   **[Cafe Model](https://app.gazebosim.org/OpenRobotics/fuel/models/Cafe):** The primary environment for the robot. Created by Open Robotics.
 -   **[Null Island Model](https://app.gazebosim.org/OpenRobotics/fuel/worlds/Null%20Island):** The island terrain used in the world. Created by Open Robotics.
-
-These assets are used in accordance with their respective licenses.
 
 ## System Requirements
 
--   Ubuntu 22.04
--   ROS 2 Humble Hawksbill
--   Gazebo Fortress (comes with the full ROS 2 desktop install)
--   `colcon` build tool
+-   **OS:** Windows (WSL2 recommended) or Linux (Ubuntu 22.04 LTS)
+-   **ROS Distribution:** ROS 2 Humble Hawksbill
+-   **Simulator:** Gazebo Fortress
+-   **Build Tool:** `colcon`
 
 ## Installation & Setup
 
 1.  **Clone the Repository:**
     Clone this repository into your `ros2_ws/src` directory.
+    ```bash
+    cd ~/ros2_ws/src
+    git clone <repository_url>
+    ```
 
 2.  **Install Dependencies:**
     Run the installation script to get all the necessary ROS 2 packages.
@@ -40,47 +43,80 @@ These assets are used in accordance with their respective licenses.
     ./install.sh
     ```
 
+    *Note: `install.sh` installs packages like `slam_toolbox`, `navigation2`, `ros_gz`, etc.*
+
 3.  **Build the Workspace:**
     Compile the packages using `colcon`.
     ```bash
+    cd ~/ros2_ws
     colcon build
     ```
 
-## How to Run
+## Usage Guide
 
-This project is designed for autonomous mapping. The main launch file will start the simulation, the mapping node, and the robot's autonomous driving logic all at once.
+### 1. Autonomous Mapping (Mapping Mode)
 
-1.  **Source the Workspace:**
-    Open a terminal and navigate to your `ros2_ws`.
-    ```bash
-    source install/setup.bash
-    ```
+This mode allows the robot to explore the environment autonomously and generate a map.
 
-2.  **Run the Simulation:**
-    Use the provided script to launch everything.
-    ```bash
-    chmod +x run_sim.sh
-    ./run_sim.sh
-    ```
+**Run:**
+```bash
+./run_mapping.sh
+```
 
-    This will open:
-    -   A Gazebo window with the robot in the cafe.
-    -   An RViz window to visualize the map.
-    -   The robot will start moving and mapping on its own.
+**What it does:**
+-   Launches Gazebo with the Cafe world.
+-   Spawns the Roomba robot.
+-   Starts `scan_remapper` and `odom_to_tf` nodes to bridge Gazebo and ROS 2.
+-   Starts `slam_toolbox` for mapping.
+-   Starts `cleaning_node.py` (Autonomous Wall Follower) to drive the robot.
+-   Opens RViz to visualize the map being built.
 
-3.  **Stop the Simulation:**
-    To cleanly shut down all processes (Gazebo, RViz, ROS nodes), use the stop script.
-    ```bash
-    chmod +x stop_sim.sh
-    ./stop_sim.sh
-    ```
-    (Using `Ctrl+C` in the launch terminal also works, but this is a failsafe).
+**To Save the Map:**
+Once the robot has explored enough, run the following command in a **new terminal**:
+```bash
+ros2 run nav2_map_server map_saver_cli -f ~/my_map
+```
+
+### 2. Coverage Cleaning (Navigation Mode)
+
+This mode uses an existing map to perform a cleaning task (zig-zag coverage pattern).
+
+**Run:**
+```bash
+./run_cleaning.sh
+```
+
+*Note: You must have a saved map before running this, or configure the launch file to point to your map.*
+
+### 3. Stopping the Simulation
+
+To cleanly shut down all processes (Gazebo, RViz, ROS nodes):
+```bash
+./stop_sim.sh
+```
 
 ## Project Structure
 
--   `src/my_robot_pkg`: The "brain" of the robot. Contains the Python node for autonomous wall-following (`cleaning_node.py`).
--   `src/robo_roomba_sim`: The "body" and "world" of the robot. Contains the URDF model, Gazebo world file, launch files, and RViz configurations.
+### `src/my_robot_pkg`
+The "brain" of the robot. Contains the Python nodes for logic and control.
+-   **`cleaning_node.py`**: Implementation of the Wall-Following algorithm (Finite State Machine).
+-   **`coverage_cleaner.py`**: Node for coverage path planning (Zig-Zag pattern) using Nav2.
+-   **`odom_to_tf.py`**: Converts Odometry messages to TF transforms (fixes simulation time issues).
+-   **`scan_remapper.py`**: Remaps LaserScan frame IDs to match standard conventions (removes `roomba/` prefix).
+-   **`tf_alias_helper.py`** & **`tf_prefix_remover.py`**: Helpers to manage TF frame names between Gazebo and ROS 2.
 
-## Next Steps
+### `src/robo_roomba_sim`
+The "body" and "world".
+-   **`urdf/roomba.urdf.xacro`**: The robot description file.
+-   **`worlds/indoor.sdf`**: The Gazebo world environment.
+-   **`launch/`**: Launch files for different modes (`autonomous_mapping.launch.py`, `localization_launch.py`, etc.).
+-   **`config/`**: Configuration files for SLAM and Nav2.
 
-After successfully generating and saving a map using `autonomous_mapping`, the next phase is to use that map for path planning and full-coverage cleaning using the Nav2 stack.
+## Troubleshooting
+
+-   **Robot not moving?** Check if `ros_gz_bridge` is running correctly. Verify `/cmd_vel` topic is connected.
+-   **Map not appearing?** Ensure `scan_remapper` is running and `/scan` topic has data. Check TF tree (`ros2 run tf2_tools view_frames`).
+-   **Build fails?** Make sure you have sourced ROS 2 (`source /opt/ros/humble/setup.bash`) before running `colcon build`.
+
+---
+*Created by Firania. Documented and Commented in Bahasa Indonesia.*

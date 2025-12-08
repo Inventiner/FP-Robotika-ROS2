@@ -24,9 +24,12 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'robot_driver_node = my_robot_pkg.robot_driver_node:main',
-            'lidar_processor_node = my_robot_pkg.lidar_processor_node:main',
             'cleaning_node = my_robot_pkg.cleaning_node:main',
+            'coverage_cleaner = my_robot_pkg.coverage_cleaner:main',
+            'odom_to_tf = my_robot_pkg.odom_to_tf:main',
+            'tf_prefix_remover = my_robot_pkg.tf_prefix_remover:main',
+            'scan_remapper = my_robot_pkg.scan_remapper:main',
+            'tf_alias_helper = my_robot_pkg.tf_alias_helper:main',
         ],
     },
 )

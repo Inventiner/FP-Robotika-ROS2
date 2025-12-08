@@ -7,17 +7,17 @@ import time
 import math
 from rclpy.duration import Duration
 
-# --- Helper Function for Generating Waypoints ---
+# --- Fungsi Pembantu untuk Membuat Waypoints ---
 def generate_cleaning_waypoints(logger=None):
     waypoints = []
-    # Map boundaries: X: -5.04 to 17.41, Y: -6.16 to 3.34
-    # Safe cleaning area with margin
-    # Adjusted to be safer from walls (inflation radius is 0.35, robot radius 0.18)
-    Y_START = -5.0  # Was -5.5 (too close to -6.16 wall?)
-    Y_END = 2.5     # Was 3.0 (close to 3.34 wall)
-    X_LEFT = -3.5   # Was -4.0 (close to -5.04 wall)
-    X_RIGHT = 3.0   # Was 3.5
-    LANE_WIDTH = 0.5  # Slightly wider spacing for reliability 
+    # Batas peta: X: -5.04 sampai 17.41, Y: -6.16 sampai 3.34
+    # Area pembersihan yang aman dengan margin
+    # Disesuaikan agar lebih aman dari tembok 
+    Y_START = -5.0  # Sebelumnya -5.5
+    Y_END = 2.5     # Sebelumnya 3.0
+    X_LEFT = -3.5   # Sebelumnya -4.0
+    X_RIGHT = 3.0   # Sebelumnya 3.5
+    LANE_WIDTH = 0.5  # Jarak antar jalur yang sedikit lebih lebar untuk keandalan 
     
     if logger:
         logger.info(f"[DEBUG] Waypoint Generation Config:")
@@ -29,14 +29,14 @@ def generate_cleaning_waypoints(logger=None):
     direction = 1 
     row_count = 0
     
-    # Track previous yaw to ensure smooth transitions at the start of rows
-    # Initial previous yaw is 0.0 (assuming robot starts facing right or neutral)
+    # Lacak yaw sebelumnya untuk memastikan transisi yang mulus di awal baris
+    # Yaw awal adalah 0.0 (asumsi robot mulai menghadap kanan atau netral)
     prev_yaw = 0.0
 
     while y <= Y_END:
         row_count += 1
         
-        # 1. Determine direction and yaw for the END of the row
+        # 1. Tentukan arah dan yaw untuk AKHIR baris
         if direction == 1:
             start_x = X_LEFT
             end_x = X_RIGHT
@@ -46,12 +46,12 @@ def generate_cleaning_waypoints(logger=None):
             end_x = X_LEFT
             curr_yaw = math.pi
         
-        # Create orientation quaternions
+        # Buat quaternion untuk orientasi
         q_start = tf_transformations.quaternion_from_euler(0, 0, prev_yaw)
         q_end = tf_transformations.quaternion_from_euler(0, 0, curr_yaw)
 
-        # 2. Define START point (Pose 1)
-        # Use prev_yaw so robot arrives at start of row matching previous row's end orientation
+        # 2. Tentukan titik MULAI (Pose 1)
+        # Gunakan prev_yaw agar robot tiba di awal baris sesuai orientasi akhir baris sebelumnya
         pose_start = PoseStamped()
         pose_start.header.frame_id = 'map'
         pose_start.header.stamp.sec = 0
@@ -62,8 +62,8 @@ def generate_cleaning_waypoints(logger=None):
         pose_start.pose.orientation.z = q_start[2]
         pose_start.pose.orientation.w = q_start[3]
         
-        # 3. Define END point (Pose 2)
-        # Use curr_yaw so robot traverses the row in the correct direction
+        # 3. Tentukan titik AKHIR (Pose 2)
+        # Gunakan curr_yaw agar robot melintasi baris dengan arah yang benar
         pose_end = PoseStamped()
         pose_end.header.frame_id = 'map'
         pose_end.header.stamp.sec = 0
@@ -82,10 +82,10 @@ def generate_cleaning_waypoints(logger=None):
             logger.info(f"  Start: ({start_x:.2f}, {y:.2f}) Yaw: {prev_yaw:.2f}")
             logger.info(f"  End:   ({end_x:.2f}, {y:.2f}) Yaw: {curr_yaw:.2f}")
         
-        # 4. Prepare for next loop
+        # 4. Siapkan untuk loop berikutnya
         y += LANE_WIDTH
         direction *= -1
-        prev_yaw = curr_yaw # Next row's start should match this row's end
+        prev_yaw = curr_yaw # Awal baris berikutnya harus cocok dengan akhir baris ini
     
     if logger:
         y_values = [w.pose.position.y for w in waypoints]
@@ -100,15 +100,15 @@ class CoverageCleaner(Node):
         self.get_logger().info("Coverage Cleaner Node has been started.")
         self.get_logger().info("=" * 60)
         
-        # We assume the navigation stack is fully up, but give a small pause 
-        # to ensure the /clock bridge is active.
+        # Kita asumsikan stack navigasi sudah berjalan, tapi beri jeda kecil
+        # untuk memastikan bridge /clock aktif.
         self.get_logger().info("[DEBUG] Waiting 1 second for system initialization...")
         time.sleep(1.0)
         
         self.get_logger().info("[DEBUG] Creating BasicNavigator instance...")
         self.navigator = BasicNavigator()
 
-        # 1. Set Initial Pose (REQUIRED for localization)
+        # 1. Atur Pose Awal (DIBUTUHKAN untuk lokalisasi)
         self.get_logger().info("[DEBUG] Setting initial pose at (0.0, 0.0)...")
         initial_pose = PoseStamped()
         initial_pose.header.frame_id = 'map'
@@ -124,19 +124,19 @@ class CoverageCleaner(Node):
         self.navigator.setInitialPose(initial_pose)
         self.get_logger().info("[DEBUG] Initial pose set. Waiting for Nav2 stack activation...")
         
-        # 2. Wait for Nav2 to activate (usually a few seconds after initial pose is set)
+        # 2. Tunggu Nav2 aktif (biasanya beberapa detik setelah pose awal diatur)
         self.get_logger().info("[DEBUG] Calling waitUntilNav2Active()...")
         self.navigator.waitUntilNav2Active()
         self.get_logger().info("=" * 60)
         self.get_logger().info("Nav2 is ACTIVE! Starting coverage mission.")
         self.get_logger().info("=" * 60)
 
-        # 3. Generate and Send Cleaning Goals
+        # 3. Hasilkan dan Kirim Tujuan Pembersihan
         self.start_cleaning_mission()
 
     def start_cleaning_mission(self):
         
-        # Generate the Zig-Zag Waypoints
+        # Hasilkan Waypoints Zig-Zag
         self.get_logger().info("[DEBUG] Generating waypoints...")
         waypoints = generate_cleaning_waypoints(logger=self.get_logger())
         
@@ -145,7 +145,7 @@ class CoverageCleaner(Node):
             rclpy.shutdown()
             return
         
-        # Insert robot's current position as first waypoint to ensure smooth start
+        # Masukkan posisi robot saat ini sebagai waypoint pertama untuk memastikan awal yang mulus
         self.get_logger().info("[DEBUG] Adding current position as first waypoint...")
         current_pose = PoseStamped()
         current_pose.header.frame_id = 'map'
@@ -174,44 +174,44 @@ class CoverageCleaner(Node):
         for idx, wp in enumerate(waypoints[-3:], len(waypoints)-3):
             self.get_logger().info(f"  [{idx}] ({wp.pose.position.x:.2f}, {wp.pose.position.y:.2f})")
         
-        # Send the sequence of goals to Nav2
+        # Kirim urutan tujuan ke Nav2
         self.get_logger().info("=" * 60)
         self.get_logger().info("[DEBUG] Sending waypoints to Nav2 via goThroughPoses()...")
         self.get_logger().info("=" * 60)
         
-        # Optional: Spin to clear costmap before starting
+        # Opsional: Berputar untuk membersihkan costmap sebelum mulai
         self.get_logger().info("[DEBUG] Spinning to clear local costmap...")
-        self.navigator.spin(spin_dist=1.57) # 90 degrees
+        self.navigator.spin(spin_dist=1.57) # 90 derajat
         while not self.navigator.isTaskComplete():
             pass
         self.get_logger().info("[DEBUG] Spin complete.")
 
         self.navigator.goThroughPoses(waypoints)
         
-        # --- Mission Monitoring Loop ---
+        # --- Loop Pemantauan Misi ---
         self.get_logger().info("[DEBUG] Entering mission monitoring loop...")
         i = 0
         while not self.navigator.isTaskComplete():
             i += 1
             feedback = self.navigator.getFeedback()
             
-            if feedback and i % 10 == 0: # Print every ~1 second
+            if feedback and i % 10 == 0: # Cetak setiap ~1 detik
                 self.get_logger().info(f'[PROGRESS] Distance remaining: {feedback.distance_remaining:.2f} meters')
-                # Debug current pose if available in feedback (Nav2 feedback usually contains current_pose)
+                # Debug pose saat ini jika tersedia di feedback
                 if hasattr(feedback, 'current_pose'):
                     p = feedback.current_pose.pose.position
                     self.get_logger().info(f'[DEBUG] Current Pose: ({p.x:.2f}, {p.y:.2f})')
             
-            if i % 50 == 0:  # Every 5 seconds
+            if i % 50 == 0:  # Setiap 5 detik
                 self.get_logger().info(f"[DEBUG] Still navigating... (iteration {i})")
 
-            # Optional: Add loop-break logic for cleaning (e.g., check battery)
-            time.sleep(0.1)  # Small delay to prevent CPU spinning
+            # Opsional: Tambahkan logika pemutus loop untuk pembersihan (misal: cek baterai)
+            time.sleep(0.1)  # Jeda kecil untuk mencegah penggunaan CPU berlebih
         
         self.get_logger().info("[DEBUG] Mission monitoring loop completed.")
         self.get_logger().info("=" * 60)
             
-        # --- Mission Completion Check ---
+        # --- Cek Penyelesaian Misi ---
         result = self.navigator.getResult()
         result_str = str(result)
         

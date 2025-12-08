@@ -7,15 +7,18 @@ import xacro # Corrected import
 
 def generate_launch_description():
     # --- DECLARE LAUNCH ARGUMENTS ---
+    # (DEKLARASI ARGUMEN LAUNCH)
     declare_use_sim_time_argument = DeclareLaunchArgument(
         'use_sim_time',
         default_value='true',
         description='Use simulation (Gazebo) clock if true')
 
     # --- DEFINE PATHS ---
+    # (DEFINISI PATH/JALUR)
     pkg_sim_share = get_package_share_directory('robo_roomba_sim')
 
     # --- SIMULATION COMPONENTS ---
+    # (KOMPONEN SIMULASI)
     xacro_file = os.path.join(pkg_sim_share, 'urdf', 'roomba.urdf.xacro')
     robot_desc = xacro.process_file(xacro_file).toxml() # Corrected function call
 
@@ -24,7 +27,8 @@ def generate_launch_description():
     gazebo = ExecuteProcess(cmd=['ign', 'gazebo', '-r', world_file], output='screen')
     spawn_entity = Node(package='ros_gz_sim', executable='create', arguments=['-topic', 'robot_description', '-name', 'roomba', '-x', '0.0', '-y', '-5.0', '-z', '0.75'], output='screen')
 
-    # --- ROS 2 NODES ---    
+    # --- ROS 2 NODES ---
+    # (NODE-NODE ROS 2)    
     node_robot_state_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',

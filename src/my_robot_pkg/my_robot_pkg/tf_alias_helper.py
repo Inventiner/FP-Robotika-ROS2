@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """
 TF Alias Helper Node
+(Node Pembantu Alias TF)
 
 This node subscribes to TF topics and applies aliasing rules to frame names.
 It can remove prefixes (e.g. 'roomba/base_link' -> 'base_link') or add them.
+(Node ini berlangganan topik TF dan menerapkan aturan alias pada nama frame.
+Ini dapat menghapus prefix (misalnya 'roomba/base_link' -> 'base_link') atau menambahkannya.)
 
 Author: GitHub Copilot
 Date: December 8, 2025
@@ -30,6 +33,7 @@ class TFAliasHelper(Node):
         
         self.get_logger().info(f'TF Alias Helper starting. Mode: {self.mode}, Prefix: {self.prefix}')
         
+        # Subscribe ke topic TF input
         self.tf_sub = self.create_subscription(
             TFMessage,
             input_tf,
@@ -37,6 +41,7 @@ class TFAliasHelper(Node):
             100
         )
         
+        # Subscribe ke topic TF static input
         self.tf_static_sub = self.create_subscription(
             TFMessage,
             input_tf_static,
@@ -44,12 +49,14 @@ class TFAliasHelper(Node):
             100
         )
         
+        # Publisher untuk TF yang sudah diproses
         self.tf_pub = self.create_publisher(TFMessage, '/tf', 100)
         self.tf_static_pub = self.create_publisher(TFMessage, '/tf_static', 100)
         
         self.cleaned_frames = set()
 
     def process_frame(self, frame_name):
+        # Proses nama frame berdasarkan mode yang dipilih
         if self.mode == 'remove_prefix':
             if frame_name.startswith(self.prefix):
                 return frame_name[len(self.prefix):]
@@ -67,6 +74,7 @@ class TFAliasHelper(Node):
             new_msg.transforms.append(new_transform)
             
             # Logging
+            # (Pencatatan Log untuk debugging)
             key = (transform.header.frame_id, new_transform.header.frame_id)
             if key not in self.cleaned_frames:
                 self.cleaned_frames.add(key)

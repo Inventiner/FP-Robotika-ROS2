@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
 Scan Frame Remapper
+(Remapper Frame Scan)
 
 Subscribes to /scan topic and republishes with cleaned frame_id (removes roomba/ prefix).
+(Subscribe ke topik /scan dan mempublikasikan ulang dengan frame_id yang dibersihkan (menghapus prefix roomba/))
 
 Author: GitHub Copilot
 Date: December 8, 2025
@@ -20,7 +22,7 @@ class ScanRemapper(Node):
         
         self.get_logger().info('Scan Frame Remapper starting...')
         
-        # Subscribe to original scan
+        # Subscribe ke scan asli
         self.scan_sub = self.create_subscription(
             LaserScan,
             '/scan_raw',
@@ -28,22 +30,22 @@ class ScanRemapper(Node):
             10
         )
         
-        # Publisher for remapped scan
+        # Publisher untuk scan yang sudah di-remap
         self.scan_pub = self.create_publisher(LaserScan, '/scan', 10)
         
         self.get_logger().info('Scan Frame Remapper ready!')
         
     def scan_callback(self, msg):
-        """Remap frame_id and republish"""
-        # Create new message with cleaned frame_id
+        """Remap frame_id dan publikasikan ulang"""
+        # Buat pesan baru dengan frame_id yang dibersihkan
         cleaned_msg = LaserScan()
         cleaned_msg.header = msg.header
         
-        # Remove roomba/ prefix from frame_id
+        # Hapus prefix roomba/ dari frame_id
         if msg.header.frame_id.startswith('roomba/'):
-            cleaned_msg.header.frame_id = msg.header.frame_id[7:]  # Remove 'roomba/'
+            cleaned_msg.header.frame_id = msg.header.frame_id[7:]  # Hapus 'roomba/'
             
-        # Copy all other fields
+        # Salin semua field lainnya
         cleaned_msg.angle_min = msg.angle_min
         cleaned_msg.angle_max = msg.angle_max
         cleaned_msg.angle_increment = msg.angle_increment

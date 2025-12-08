@@ -2,96 +2,127 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import LaserScan
+from nav_msgs.msg import Odometry
+from ros_gz_interfaces.msg import Contacts
 from rclpy.qos import ReliabilityPolicy, QoSProfile
+import math
 
-class SmartVacuum(Node):
+class AutonomousMapper(Node):
     def __init__(self):
-        super().__init__('smart_vacuum')
+        super().__init__('autonomous_mapper')
         
         self.publisher_ = self.create_publisher(Twist, '/cmd_vel', 10)
-        self.subscriber = self.create_subscription(
-            LaserScan, '/scan', self.lidar_callback, 
-            QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT))
+        self.create_subscription(LaserScan, '/scan', self.lidar_callback, QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT))
+        self.create_subscription(Contacts, '/bumper', self.bumper_callback, 10)
 
-        self.regions = {'front': 99.0, 'left': 99.0}
         self.lidar_received = False
+        self.sensor_data = {'front': 99.0, 'right_90': 99.0, 'right_45': 99.0}
+        
+        self.bumper_hit = False; self.recovery_timer = 0; self.is_recovering = False
+
+        # --- PERSISTENT STATE ---
         self.current_state = "SEEKING"
         
-        # --- PID CONTROLLER VARIABLES ---
-        self.last_error = 0.0
-        self.integral = 0.0
-        # More "punitive" gains
-        self.kp = 4.0  # Stronger reaction to current error
-        self.kd = 8.0  # Stronger damping to prevent overshoot
-        self.ki = 0.05 # Small integral term to correct persistent drift
+        self.kp_dist = 2.0; self.kp_theta = 4.0
 
-        self.get_logger().info("SMART VACUUM INITIALIZED | PID Controller")
-        self.timer = self.create_timer(0.1, self.control_loop)
+        self.get_logger().info("AUTONOMOUS MAPPER 28.0 | Persistent State Machine")
+        self.timer = self.create_timer(0.05, self.control_loop) # 20Hz
+
+    def bumper_callback(self, msg):
+        if len(msg.contacts) > 0 and not self.is_recovering:
+            self.bumper_hit = True; self.is_recovering = True
+            self.get_logger().warn(">>> BUMPER HIT! <<<")
 
     def lidar_callback(self, msg):
-        # ... (this is the same) ...
-        self.lidar_received = True; ranges = msg.ranges; size = len(ranges)
-        def get_min_in_slice(start, end):
-            valid = [r for r in ranges[start:end] if 0.1 < r < 10.0]
-            return min(valid) if valid else 99.0
-        front_index = size // 2
-        self.regions['front'] = get_min_in_slice(front_index - 15, front_index + 15)
-        left_index = (size * 3) // 4
-        self.regions['left'] = get_min_in_slice(left_index - 20, left_index + 20)
+        self.lidar_received = True; ranges = msg.ranges; size = len(ranges); mid_idx = size // 2
+        def get_avg(start, end):
+            s = ranges[start:end]; v = [r for r in s if 0.1 < r < 10.0]; return sum(v)/len(v) if v else 99.0
+        self.sensor_data['front'] = get_avg(mid_idx-15, mid_idx+15)
+        r90_idx = int(size * 0.25); self.sensor_data['right_90'] = get_avg(r90_idx-10, r90_idx+10)
+        r45_idx = int(size * 0.375); self.sensor_data['right_45'] = get_avg(r45_idx-10, r45_idx+10)
 
     def control_loop(self):
         cmd_msg = Twist()
         if not self.lidar_received: return
 
-        front_dist = self.regions['front']; left_dist = self.regions['left']
-        
-        STOP_DIST = 0.4
-        WALL_DIST = 0.35 # Tighter 35cm target distance
-        SPEED = 0.3
-        TURN_SPEED = 0.6
-        WALL_FOLLOW_THRESHOLD = 0.8 # Use your tighter threshold
+        if self.bumper_hit: self.recovery_timer = 30; self.bumper_hit = False
+        if self.recovery_timer > 0:
+            self.current_state = "RECOVERING"
+            if self.recovery_timer > 15: cmd_msg.linear.x = -0.15
+            else: cmd_msg.angular.z = 0.7
+            self.recovery_timer -= 1
+            if self.recovery_timer == 0: self.is_recovering = False; self.current_state="SEEKING" # After recovery, force re-seek
+            self.publisher_.publish(cmd_msg); return
 
-        # --- State Logic ---
-        if front_dist < STOP_DIST: self.current_state = "TURNING"
-        elif left_dist < WALL_FOLLOW_THRESHOLD: self.current_state = "FOLLOWING"
-        elif self.current_state == "FOLLOWING" and left_dist >= WALL_FOLLOW_THRESHOLD: self.current_state = "CORNERING"
-        else:
-            if self.current_state != "CORNERING": self.current_state = "SEEKING"
-
-        # --- Action based on State ---
-        if self.current_state == "TURNING":
-            cmd_msg.linear.x = 0.0; cmd_msg.angular.z = -TURN_SPEED
-            self.last_error = 0; self.integral = 0 # Reset PID
+        front = self.sensor_data['front']; right_90 = self.sensor_data['right_90']
+        right_45 = self.sensor_data['right_45']
         
-        elif self.current_state == "FOLLOWING":
-            cmd_msg.linear.x = SPEED
-            
-            # --- FULL PID CONTROLLER ---
-            error = left_dist - WALL_DIST
-            self.integral += error
-            derivative = error - self.last_error
-            
-            turn_adjustment = (self.kp * error) + (self.ki * self.integral) + (self.kd * derivative)
-            self.last_error = error
-            
-            cmd_msg.angular.z = max(min(turn_adjustment, 0.8), -0.8)
-            
-        elif self.current_state == "CORNERING":
-            cmd_msg.linear.x = 0.0; cmd_msg.angular.z = 0.7
-            self.last_error = 0; self.integral = 0
-            
-        elif self.current_state == "SEEKING":
-            cmd_msg.linear.x = SPEED; cmd_msg.angular.z = 0.0
-            self.last_error = 0; self.integral = 0
-
-        # --- DEBUG ---
-        log_msg = (f"State: {self.current_state} | Sensors: [F:{front_dist:.2f}, L:{left_dist:.2f}] | CMD: [L:{cmd_msg.linear.x:.2f}, A:{cmd_msg.angular.z:.2f}]")
-        self.get_logger().info(log_msg, throttle_duration_sec=0.5)
+        LINEAR_SPEED = 0.25; TURN_SPEED = 0.6
+        INNER_CORNER_STOP_DIST = 0.4; WALL_ACQUIRE_DIST = 0.8
+        TARGET_WALL_DIST = 0.35
         
+        # ==========================================================
+        # PERSISTENT STATE MACHINE
+        # ==========================================================
+        
+        # --- State Actions & Transitions ---
+        
+        if self.current_state == "SEEKING":
+            cmd_msg.linear.x = LINEAR_SPEED
+            # Transition: Found a wall, start turning
+            if front < INNER_CORNER_STOP_DIST or right_90 < WALL_ACQUIRE_DIST:
+                self.current_state = "TURNING_INNER"
+        
+        elif self.current_state == "TURNING_INNER":
+            cmd_msg.linear.x = 0.0; cmd_msg.angular.z = TURN_SPEED
+            # Transition: Once front is clear, we must be following
+            if front > INNER_CORNER_STOP_DIST + 0.1:
+                self.current_state = "FOLLOW_WALL"
+        
+        elif self.current_state == "TURNING_OUTER":
+            cmd_msg.linear.x = 0.1; cmd_msg.angular.z = -0.7
+            # Transition: Once we see the wall on our right again, start following
+            if right_90 < WALL_ACQUIRE_DIST:
+                self.current_state = "FOLLOW_WALL"
+
+        elif self.current_state == "SIMPLE_FOLLOW":
+            error = TARGET_WALL_DIST - right_90
+            turn = self.kp_dist * error
+            cmd_msg.angular.z = max(min(turn, 0.4), -0.4)
+            cmd_msg.linear.x = LINEAR_SPEED * 0.7
+            # Transition: We stay in this "dumb" mode until a major event forces us out
+            if front < INNER_CORNER_STOP_DIST: self.current_state = "TURNING_INNER"
+            elif right_90 > WALL_ACQUIRE_DIST: self.current_state = "TURNING_OUTER"
+
+        elif self.current_state == "FOLLOW_WALL":
+            # Transition Checks (Highest Priority)
+            if front < INNER_CORNER_STOP_DIST: self.current_state = "TURNING_INNER"; return
+            if right_90 > WALL_ACQUIRE_DIST: self.current_state = "TURNING_OUTER"; return
+
+            # Action: Proportional-Heading Control
+            ideal_45 = right_90 / 0.707
+            heading_error = ideal_45 - right_45
+            
+            # THE LOCK: If heading error is huge, switch to dumb mode and STAY THERE
+            if abs(heading_error) > 0.8:
+                self.current_state = "SIMPLE_FOLLOW"
+                return # Act on the new state in the next cycle
+
+            # If sensors are trusted, do Pro control
+            distance_error = TARGET_WALL_DIST - right_90
+            turn = (self.kp_dist * distance_error) + (self.kp_theta * heading_error)
+            turn = max(min(turn, 1.0), -1.0)
+            
+            cmd_msg.angular.z = turn
+            speed_factor = 1.0 - (abs(turn) * 0.8)
+            cmd_msg.linear.x = max(LINEAR_SPEED * speed_factor, 0.05)
+
         self.publisher_.publish(cmd_msg)
+        log_msg = (f"State: {self.current_state:<15} | R90:{right_90:.2f} | CMD: [L:{cmd_msg.linear.x:.2f}, A:{cmd_msg.angular.z:.2f}]")
+        self.get_logger().info(log_msg, throttle_duration_sec=0.5)
 
 def main(args=None):
-    rclpy.init(args=args); node = SmartVacuum(); rclpy.spin(node)
+    rclpy.init(args=args); node = AutonomousMapper(); rclpy.spin(node)
     node.destroy_node(); rclpy.shutdown()
 
 if __name__ == '__main__':

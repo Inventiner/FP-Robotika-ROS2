@@ -12,6 +12,7 @@
     </plugin>
     <plugin filename="libignition-gazebo-scene-broadcaster-system.so" name="ignition::gazebo::systems::SceneBroadcaster"></plugin>
     <plugin filename="libignition-gazebo-user-commands-system.so" name="ignition::gazebo::systems::UserCommands"></plugin>
+    <plugin filename="libignition-gazebo-contact-system.so" name="ignition::gazebo::systems::Contact"></plugin>
 
     <!-- 2. SCENE -->
     <scene>
@@ -115,8 +116,163 @@
           <geometry><box><size>1.09 0.15 0.28</size></box></geometry>
         </collision>
         <collision name="coke">
-          <pose>-4.385 0.26 .95 0 0 0</pose>
+          <pose>-4.385 0.275 .95 0 0 0</pose>
           <geometry><box><size>1.03 1.03 1.52</size></box></geometry>
+        </collision>
+        <!-- ========================================================== -->
+        <!-- CUSTOM COLLISIONS -->
+        <!-- ========================================================== -->
+        <!-- Table Leg Left -->
+        <collision name="table_leg_left">
+          <pose>-4.6355 -5.5885 0.5247 0 0 0</pose>
+          <geometry><box><size>0.6690 0.0670 0.6780</size></box></geometry>
+        </collision>
+        <!-- Table Leg Right -->
+        <collision name="table_leg_right">
+          <pose>-4.6355 -2.4490 0.5268 0 0 0</pose>
+          <geometry><box><size>0.6690 0.0960 0.6739</size></box></geometry>
+        </collision>
+
+        <!-- Kitchen Panel 1 -->
+        <collision name="kitchen_panel_1">
+          <pose>1.0448 7.7815 0.7278 0 0 1.2757</pose>
+          <geometry><box><size>0.8330 0.0500 1.0843</size></box></geometry>
+        </collision>
+
+        <!-- Kitchen Table 2 -->
+        <collision name="kitchen_table_2">
+          <pose>0.8344 8.5780 0.7603 0 0 0</pose>
+          <geometry><box><size>0.6632 0.7960 1.1493</size></box></geometry>
+        </collision>
+
+        <!-- Kitchen Panel 3 -->
+        <collision name="kitchen_panel_3">
+          <pose>0.4527 8.2165 0.7603 0 0 -2.1690</pose>
+          <geometry><box><size>0.1779 0.0500 1.1493</size></box></geometry>
+        </collision>
+
+        <!-- Kitchen Panel 4 -->
+        <collision name="kitchen_panel_4">
+          <pose>-0.1963 8.1430 0.7603 0 0 0</pose>
+          <geometry><box><size>1.1977 0.0500 1.1493</size></box></geometry>
+        </collision>
+
+        <!-- Kitchen Appliance 1 -->
+        <collision name="kitchen_appliance_1">
+          <pose>-1.3771 7.8785 1.5094 0 0 0</pose>
+          <geometry><box><size>1.1639 0.7110 2.6473</size></box></geometry>
+        </collision>
+
+        <!-- Kitchen Panel 5 -->
+        <collision name="kitchen_panel_5">
+          <pose>-2.4965 7.9630 0.7068 0 0 -2.6745</pose>
+          <geometry><box><size>1.2037 0.0500 1.0423</size></box></geometry>
+        </collision>
+
+        <!-- Kitchen Table 6 -->
+        <collision name="kitchen_table_6">
+          <pose>-3.7425 7.6920 0.7068 0 0 0</pose>
+          <geometry><box><size>1.4170 0.0500 1.0423</size></box></geometry>
+        </collision>
+
+        <!-- Kitchen Table 7 -->
+        <collision name="kitchen_table_7">
+          <pose>-4.4510 8.3375 0.7068 0 0 0</pose>
+          <geometry><box><size>0.0500 1.2910 1.0423</size></box></geometry>
+        </collision>
+
+        <!-- Freezer Inside Wall 1 -->
+        <collision name="freezer_inside_wall_1">
+          <pose>-3.7895 9.0500 1.2779 0 0 0</pose>
+          <geometry><box><size>2.3430 0.1340 2.1843</size></box></geometry>
+        </collision>
+
+        <!-- Freezer Inside Wall 2 -->
+        <collision name="freezer_inside_wall_2">
+          <pose>-2.6230 10.4665 1.2779 0 0 0</pose>
+          <geometry><box><size>0.2080 2.9670 2.1843</size></box></geometry>
+        </collision>
+
+        <!-- Kitchen Appliance 2 -->
+        <collision name="kitchen_appliance_2">
+          <pose>-0.3705 11.6050 0.6529 0 0 0</pose>
+          <geometry><box><size>4.2970 0.6900 0.9343</size></box></geometry>
+        </collision>
+
+        <!-- Oven Door -->
+        <collision name="oven_door">
+          <pose>0.5226 11.2450 0.6429 0 0 0</pose>
+          <geometry><box><size>0.9847 0.0300 0.9143</size></box></geometry>
+        </collision>
+
+        <!-- Chimney Wall 1 -->
+        <collision name="chimney_wall_1">
+          <pose>-0.1796 11.5400 1.2179 0 0 0</pose>
+          <geometry><box><size>0.0538 0.8200 2.0643</size></box></geometry>
+        </collision>
+
+        <!-- Chimney Wall 2 -->
+        <collision name="chimney_wall_2">
+          <pose>1.2250 11.5350 1.2179 0 0 0</pose>
+          <geometry><box><size>0.0500 0.8300 2.0643</size></box></geometry>
+        </collision>
+
+        <!-- Kitchen Table 8 -->
+        <collision name="kitchen_table_8">
+          <pose>2.1780 10.6850 0.6429 0 0 0</pose>
+          <geometry><box><size>0.2560 0.5100 0.9143</size></box></geometry>
+        </collision>
+
+        <!-- Bar Table left -->
+        <collision name="bar_table_1_left">
+          <pose>-1.2595 5.5925 0.7299 0 0 -1.3417</pose>
+          <geometry><box><size>3.6771 0.05 1.0802</size></box></geometry>
+        </collision>
+
+        <!-- Bar Table Right -->
+        <collision name="bar_table_1_right">
+          <pose>-1.2161 5.6060 0.7299 0 0 -1.3877</pose>
+          <geometry><box><size>3.6144 0.05 1.0802</size></box></geometry>
+        </collision>
+
+        <!-- Bar Table 2 -->
+        <collision name="bar_table_2">
+          <pose>-1.1453 3.5010 0.7299 0 0 -2.3026</pose>
+          <geometry><box><size>0.8442 0.0527 1.0802</size></box></geometry>
+        </collision>
+
+        <!-- Cylinder Corner -->
+        <collision name="cylinder_corner">
+          <pose>1.9140 11.1000 0.6429 0 0 -0.8622</pose>
+          <geometry><box><size>0.4200 0.0500 0.9143</size></box></geometry>
+        </collision>
+
+        <!-- ========================================================== -->
+        <!-- CURTAIN (Multi-Segment Zig-Zag Wall) -->
+        <!-- ========================================================== -->
+        <collision name="curtain_seg_1">
+          <pose>-2.4695 9.2134 1.1374 0 0 0.8310</pose>
+          <geometry><box><size>0.2017 0.05 1.9033</size></box></geometry>
+        </collision>
+        
+        <collision name="curtain_seg_2">
+          <pose>-2.4679 9.3151 1.1374 0 0 2.3983</pose>
+          <geometry><box><size>0.1847 0.05 1.9033</size></box></geometry>
+        </collision>
+        
+        <collision name="curtain_seg_3">
+          <pose>-2.4694 9.4869 1.1374 0 0 0.8276</pose>
+          <geometry><box><size>0.2010 0.05 1.9033</size></box></geometry>
+        </collision>
+        
+        <collision name="curtain_seg_4">
+          <pose>-2.5269 9.6421 1.1374 0 0 2.3993</pose>
+          <geometry><box><size>0.3447 0.05 1.9033</size></box></geometry>
+        </collision>
+        
+        <collision name="curtain_seg_5">
+          <pose>-2.5943 9.8465 1.1374 0 0 0.7079</pose>
+          <geometry><box><size>0.1553 0.05 1.9033</size></box></geometry>
         </collision>
       </link>
     </model>
@@ -144,9 +300,9 @@
     </model>
 
     <!-- ========================================================== -->
-    <!-- 6. DEBUGGING TOOLS -->
+    <!-- 6. DEBUGGING TOOLS (currently disabled) -->
     <!-- ========================================================== -->
-    <!-- 1. The "Tape Measure" Cube -->
+    <!-- 1. The "Tape Measure" Cube
     <model name='tape_measure_cube'>
       <static>true</static>
       <pose>0 -7 2 0 0 0</pose>
@@ -163,7 +319,7 @@
       </link>
     </model>
 
-    <!-- 2. The "Rotation Guide" Wall -->
+    2. The "Rotation Guide" Wall
     <model name='rotation_guide'>
       <static>true</static>
       <pose>2 -7 2 0 0 0</pose>
@@ -178,7 +334,7 @@
           <geometry><box><size>2.0 0.1 0.5</size></box></geometry>
         </collision>
       </link>
-    </model>
+    </model> -->
 
   </world>
 </sdf>

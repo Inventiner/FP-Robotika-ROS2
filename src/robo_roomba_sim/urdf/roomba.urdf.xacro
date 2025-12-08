@@ -20,8 +20,8 @@
       <geometry><cylinder length="0.08" radius="0.17"/></geometry>
       <material name="dark_grey"/>
     </visual>
-    <collision>
-      <geometry><cylinder length="0.08" radius="0.17"/></geometry>
+    <collision name="base_collision">
+      <geometry><cylinder length="0.08" radius="0.175"/></geometry>
     </collision>
     
     <!-- 2. Bumper -->
@@ -42,8 +42,8 @@
 
     <!-- 4. Power Button -->
     <visual>
-      <origin xyz="-0.05 0 0.043" rpy="0 0 0"/>
-      <geometry><cylinder length="0.005" radius="0.015"/></geometry>
+      <origin xyz="-0.05 0 0.05" rpy="0 0 0"/>
+      <geometry><cylinder length="0.01" radius="0.015"/></geometry>
       <material name="green_light"/>
     </visual>
 
@@ -249,6 +249,18 @@
       </ray>
       <always_on>1</always_on>
       <visualize>true</visualize>
+    </sensor>
+  </gazebo>
+
+      
+  <gazebo reference="base_link">
+    <sensor name="bumper_sensor" type="contact">
+      <always_on>true</always_on>
+      <update_rate>50.0</update_rate>
+      <contact>
+        <collision>base_link_fixed_joint_lump__base_collision_collision</collision>
+      </contact>
+      <topic>bumper</topic>
     </sensor>
   </gazebo>
 

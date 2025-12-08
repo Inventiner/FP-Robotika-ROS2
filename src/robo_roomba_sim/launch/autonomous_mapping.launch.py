@@ -43,8 +43,12 @@ def generate_launch_description():
             '/scan@sensor_msgs/msg/LaserScan[ignition.msgs.LaserScan',
             '/odom@nav_msgs/msg/Odometry[ignition.msgs.Odometry',
             '/model/roomba/tf@tf2_msgs/msg/TFMessage[ignition.msgs.Pose_V',
+            '/world/cafe_on_null_island/model/roomba/link/base_link/sensor/bumper_sensor/contact@ros_gz_interfaces/msg/Contacts[ignition.msgs.Contacts',
         ],
-        remappings=[('/model/roomba/tf', '/tf')],
+        remappings=[
+            ('/model/roomba/tf', '/tf'),
+            ('/world/cafe_on_null_island/model/roomba/link/base_link/sensor/bumper_sensor/contact', '/bumper')
+        ],
         output='screen'
     )
 

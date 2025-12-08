@@ -121,6 +121,8 @@ Visualization Manager:
           Value: true
         roomba/caster:
           Value: true
+        roomba/caster_back:
+          Value: true
         roomba/odom:
           Value: true
       Marker Scale: 1
@@ -135,6 +137,8 @@ Visualization Manager:
               roomba/base_link/lidar:
                 {}
               roomba/caster:
+                {}
+              roomba/caster_back:
                 {}
       Update Interval: 0
       Value: true

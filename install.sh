@@ -14,6 +14,7 @@ sudo apt install -y \
   ros-humble-navigation2 \
   ros-humble-nav2-bringup \
   ros-humble-robot-localization \
+  ros-humble-ros-gz-interfaces \
   ros-humble-teleop-twist-keyboard
 
 echo "==================================================="
